@@ -4,10 +4,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 	"runtime"
 	"strings"
 
@@ -71,8 +73,8 @@ func ConvertByte2String(byte []byte, charset Charset) string {
 }
 
 func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response, error) {
-	// plugin.Logger.Log(hclog.Trace, "plugin method called", name)
-	// plugin.Logger.Log(hclog.Trace, "args", args)
+	plugin.Logger.Log(hclog.Trace, "plugin method called", name)
+	plugin.Logger.Log(hclog.Trace, "args", args)
 	var v = make(map[string]interface{})
 
 	isOk := true
@@ -94,158 +96,176 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 
 	outputStr := ""
 	errStr := ""
+	statusCode := 0
 	statusText := ""
 	for _, val := range args {
-		param, ok := val.(string)
-		if ok {
-			cmdArgs = append(cmdArgs, param)
+		switch data := val.(type) {
+		case string:
+			cmdArgs = append(cmdArgs, data)
+		case float32, float64:
+			cmdArgs = append(cmdArgs, fmt.Sprintf("%f", data))
+			plugin.Logger.Log(hclog.Trace, "paramter float", val, fmt.Sprintf("%f", data))
+
+		case int, int16, int32, int64:
+			cmdArgs = append(cmdArgs, fmt.Sprintf("%d", data))
+		default:
+			cmdArgs = append(cmdArgs, fmt.Sprintf("%v", data))
+			typeName := reflect.TypeOf(val).Name()
+			plugin.Logger.Log(hclog.Trace, "paramter type name", val, typeName)
+
 		}
+
 	}
 	switch name {
 	case "cmd":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"/c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "/c"}, cmdArgs...)
 	case "bash":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "sh":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "csh":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "ksh":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "zsh":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "fish":
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-c"}, cmdArgs...)
+		cmdArgs = append([]string{name, "-c"}, cmdArgs...)
 	case "scp":
 		if len(cmdArgs) < 2 {
 			v = map[string]interface{}{"code": 400, "message": "参数不足，需要2个参数"}
 			isOk = false
+		} else {
+			cmdArgs = append([]string{name, "-r"}, cmdArgs...)
 		}
-		cmdArgs = append([]string{name}, cmdArgs...)
-		cmdArgs = append([]string{"-r"}, cmdArgs...)
 	case "run":
 
 	case "remote":
 		isRemote = true
-
 		// host,port,user,password,command
 		if len(cmdArgs) < 5 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要5个参数"}
+			errStr = "参数不足，需要5个参数"
 			isOk = false
-		}
-
-		commane_line := strings.Join(cmdArgs[4:], " ")
-		plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
-
-		result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], commane_line)
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			errStr = eStr
+			commane_line := strings.Join(cmdArgs[4:], " ")
+			plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
+
+			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], commane_line)
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				errStr = eStr
+			}
+			outputStr = result
 		}
-		outputStr = result
 	case "remote_key":
 		isRemote = true
 		// host,port,key,command
 		if len(args) < 4 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要4个参数"}
+			errStr = "参数不足，需要4个参数"
 			isOk = false
-		}
-		commane_line := strings.Join(cmdArgs[3:], " ")
-		plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
-
-		result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", commane_line)
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			errStr = eStr
+			commane_line := strings.Join(cmdArgs[3:], " ")
+			plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
+
+			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", commane_line)
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				errStr = eStr
+			}
+			outputStr = result
 		}
-		outputStr = result
 	case "remote_copy_file":
 		isRemote = true
 		// host,port,user,password,srcPath,targetPath
-		if len(args) < 7 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要6个参数"}
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
-		}
-		err := SSHCopyFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	case "remote_copy_file_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 6 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要5个参数"}
+		if len(args) < 5 {
+			errStr = "参数不足，需要5个参数"
 			isOk = false
-		}
-		err := SSHCopyFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	case "remote_copy_folder":
 		isRemote = true
 		// host,port,user,password,srcPath,targetPath
-		if len(args) < 7 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要6个参数"}
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
-		}
-		err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	case "remote_copy_folder_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 6 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要5个参数"}
+		if len(args) < 5 {
+			errStr = "参数不足，需要5个参数"
 			isOk = false
-		}
-		err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	case "remote_write_file":
 		isRemote = true
 		// host,port,user,password,srcPath,targetPath
-		if len(args) < 7 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要6个参数"}
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
-		}
-		err := SSHWriteFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	case "remote_write_file_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 6 {
-			v = map[string]interface{}{"code": 400, "message": "参数不足，需要5个参数"}
+		if len(args) < 5 {
+			errStr = "参数不足，需要5个参数"
 			isOk = false
-		}
-		err := SSHWriteFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
-		if err != nil {
-			errStr = err.Error()
 		} else {
-			statusText = "ok"
+			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				statusCode = 0
+			}
 		}
+
 	default:
 		cmdArgs = append(cmdArgs, name)
 	}
@@ -283,23 +303,27 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 			statusText = err.Error()
 			plugin.Logger.Log(hclog.Trace, "error", err)
 			if errStr == "" {
-				errStr = statusText
-				statusText = "error"
+				errStr = err.Error()
+				statusCode = 503
 			}
 		} else {
-			statusText = "ok"
+			statusCode = 0
 		}
 
 	}
 	if errStr != "" {
-		statusText = "error"
+		statusCode = 503
 		outputStr = ""
 	}
 	if runtime.GOOS == "windows" {
 		outputStr = ConvertByte2String([]byte(outputStr), "GB18030")
 		errStr = ConvertByte2String([]byte(errStr), "GB18030")
 	}
-	v = map[string]interface{}{"output": outputStr, "error": errStr, "status": statusText}
+	if statusCode == 0 {
+		errStr = "调用成功"
+	}
+	v = map[string]interface{}{"data": map[string]interface{}{"output": outputStr}, "msg": errStr, "status": statusCode, "statusText": statusText}
+
 	//输出前需要转换成字节
 	bytes, err := json.Marshal(v)
 	if err != nil {
