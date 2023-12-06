@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -251,6 +253,10 @@ func SSHRun(addr string, port string, privateKey string, user string, password s
 	// privateKey could be read from a file, or retrieved from another storage
 	// source, such as the Secret Service / GNOME Keyring
 
+	// Create a context with a timeout of 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	lPort := port
 	if lPort == "" {
 		lPort = "22"
@@ -294,11 +300,21 @@ func SSHRun(addr string, port string, privateKey string, user string, password s
 
 	session.Stdout = &b  // get output
 	session.Stderr = &er // get output
-	// you can also pass what gets input to the stdin, allowing you to pipe
-	// content from client to server
-	//      session.Stdin = bytes.NewBufferString("My input")
+	// Create a channel to signal session completion
+	done := make(chan error, 1)
+	// Run the SSH session in a goroutine
+	go func() {
+		// Run your SSH commands
+		done <- session.Run(cmd)
+	}()
 
-	// Finally, run the command
-	err = session.Run(cmd)
+	// Wait for either session completion or timeout
+	select {
+	case err = <-done:
+		// fmt.Println("SSH session completed successfully")
+	case <-ctx.Done():
+		err = errors.New("timeout reached, SSH session canceled")
+	}
+
 	return b.String(), er.String(), err
 }

@@ -3,6 +3,7 @@ package main
 //插件模板
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/yaoapp/kun/grpc"
@@ -269,9 +271,6 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 	default:
 		cmdArgs = append(cmdArgs, name)
 	}
-	// if command == "" {
-	// 	v = map[string]interface{}{"output": "", "error": "Operation not supported:" + name, "status": "error"}
-	// }
 
 	if isOk && !isRemote {
 		for _, val := range args {
@@ -283,33 +282,50 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 
 		commane_line := strings.Join(cmdArgs, " ")
 		plugin.Logger.Log(hclog.Trace, "excute command:"+commane_line)
+		// Set the timeout duration
+		timeout := 10 * time.Second
 
-		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+		// Create a context with the timeout
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 
-		// out, err := cmd.CombinedOutput()
-		// if err != nil {
-		// 	// log.Fatalf("cmd.Run() failed with %s\n", err)
-		// 	errStr = err.Error()
-		// }
-		// outputStr = string(out)
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 		var outb, errb bytes.Buffer
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
-		err := cmd.Run()
-
-		errStr = errb.String()
-		outputStr = outb.String()
-		if err != nil {
-			statusText = err.Error()
-			plugin.Logger.Log(hclog.Trace, "error", err)
-			if errStr == "" {
-				errStr = err.Error()
-				statusCode = 503
-			}
-		} else {
-			statusCode = 0
+		// Start the command
+		if err := cmd.Start(); err != nil {
+			errStr = err.Error()
+			isOk = false
 		}
+		// Wait for the command to finish or timeout
+		if isOk {
+			done := make(chan error, 1)
+			go func() {
+				done <- cmd.Wait()
+			}()
 
+			select {
+			case <-ctx.Done():
+				// The command timed out
+				if err := cmd.Process.Kill(); err != nil {
+					// fmt.Printf("Failed to kill command: %s\n", err)
+					isOk = false
+					errStr = err.Error()
+				}
+			case err := <-done:
+				// The command finished
+				if err != nil {
+					// fmt.Printf("Command failed: %s\n", err)
+					errStr = err.Error()
+					isOk = false
+				}
+			}
+		}
+		if isOk {
+			errStr = errb.String()
+			outputStr = outb.String()
+		}
 	}
 	if errStr != "" {
 		statusCode = 503
