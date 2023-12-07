@@ -272,6 +272,15 @@ func SSHRun(addr string, port string, privateKey string, user string, password s
 		authMethod = ssh.Password(password)
 	}
 
+	// 有一些主机不允许输入用户名密码，需要键盘输入交互
+	SshInteractive := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+		answers = make([]string, len(questions))
+		// The second parameter is unused
+		for n, _ := range questions {
+			answers[n] = password
+		}
+		return answers, nil
+	}
 	// Authentication
 	config := &ssh.ClientConfig{
 		User: user,
@@ -281,6 +290,7 @@ func SSHRun(addr string, port string, privateKey string, user string, password s
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth: []ssh.AuthMethod{
 			authMethod,
+			ssh.KeyboardInteractive(SshInteractive),
 		},
 	}
 	// Connect
