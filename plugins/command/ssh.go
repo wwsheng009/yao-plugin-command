@@ -14,21 +14,31 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func SSHCopyFolder(addr string, port string, privateKey string, user string, password string, localFolder, remoteFolder string) error {
-
-	lPort := port
-	if lPort == "" {
-		lPort = "22"
-	}
+func getSShConfig(user string, password string, privateKey string) (*ssh.ClientConfig, error) {
+	auths := make([]ssh.AuthMethod, 0)
 	var authMethod ssh.AuthMethod
 	if privateKey != "" {
 		key, err := ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		authMethod = ssh.PublicKeys(key)
+		auths = append(auths, authMethod)
 	} else if password != "" {
 		authMethod = ssh.Password(password)
+
+		// 有一些主机不允许输入用户名密码，需要键盘输入交互
+		SshInteractive := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			answers = make([]string, len(questions))
+			// The second parameter is unused
+			for n, _ := range questions {
+				answers[n] = password
+			}
+			return answers, nil
+		}
+		auths = append(auths, authMethod)
+		auths = append(auths, ssh.KeyboardInteractive(SshInteractive))
+
 	}
 
 	// Authentication
@@ -38,9 +48,19 @@ func SSHCopyFolder(addr string, port string, privateKey string, user string, pas
 		// as clientConfig is non-permissive by default
 		// you can set ssh.InsercureIgnoreHostKey to allow any host
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
+		Auth:            auths,
+	}
+	return config, nil
+}
+func SSHCopyFolder(addr string, port string, user string, password string, privateKey string, localFolder, remoteFolder string) error {
+
+	lPort := port
+	if lPort == "" {
+		lPort = "22"
+	}
+	config, err := getSShConfig(user, password, privateKey)
+	if err != nil {
+		return err
 	}
 
 	conn, err := ssh.Dial("tcp", net.JoinHostPort(addr, lPort), config)
@@ -124,33 +144,15 @@ func SSHCopyFolder(addr string, port string, privateKey string, user string, pas
 	return nil
 }
 
-func SSHCopyFile(addr string, port string, privateKey string, user string, password string, srcPath, dstPath string) error {
+func SSHCopyFile(addr string, port string, user string, password string, privateKey string, srcPath, dstPath string) error {
 
 	lPort := port
 	if lPort == "" {
 		lPort = "22"
 	}
-	var authMethod ssh.AuthMethod
-	if privateKey != "" {
-		key, err := ssh.ParsePrivateKey([]byte(privateKey))
-		if err != nil {
-			return err
-		}
-		authMethod = ssh.PublicKeys(key)
-	} else if password != "" {
-		authMethod = ssh.Password(password)
-	}
-
-	// Authentication
-	config := &ssh.ClientConfig{
-		User: user,
-		// https://github.com/golang/go/issues/19767
-		// as clientConfig is non-permissive by default
-		// you can set ssh.InsercureIgnoreHostKey to allow any host
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
+	config, err := getSShConfig(user, password, privateKey)
+	if err != nil {
+		return err
 	}
 
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, lPort), config)
@@ -187,35 +189,16 @@ func SSHCopyFile(addr string, port string, privateKey string, user string, passw
 	return nil
 }
 
-func SSHWriteFile(addr string, port string, privateKey string, user string, password string, data, dstPath string) error {
+func SSHWriteFile(addr string, port string, user string, password string, privateKey string, data, dstPath string) error {
 
 	lPort := port
 	if lPort == "" {
 		lPort = "22"
 	}
-	var authMethod ssh.AuthMethod
-	if privateKey != "" {
-		key, err := ssh.ParsePrivateKey([]byte(privateKey))
-		if err != nil {
-			return err
-		}
-		authMethod = ssh.PublicKeys(key)
-	} else if password != "" {
-		authMethod = ssh.Password(password)
+	config, err := getSShConfig(user, password, privateKey)
+	if err != nil {
+		return err
 	}
-
-	// Authentication
-	config := &ssh.ClientConfig{
-		User: user,
-		// https://github.com/golang/go/issues/19767
-		// as clientConfig is non-permissive by default
-		// you can set ssh.InsercureIgnoreHostKey to allow any host
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
-	}
-
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, lPort), config)
 	if err != nil {
 		return err
@@ -249,7 +232,7 @@ func SSHWriteFile(addr string, port string, privateKey string, user string, pass
 }
 
 // e.g. output, err := SSHRun("root", "MY_IP", "PRIVATE_KEY", "ls")
-func SSHRun(addr string, port string, privateKey string, user string, password string, cmd string) (string, string, error) {
+func SSHRun(addr string, port string, user string, password string, privateKey string, cmd string) (string, string, error) {
 	// privateKey could be read from a file, or retrieved from another storage
 	// source, such as the Secret Service / GNOME Keyring
 
@@ -261,37 +244,9 @@ func SSHRun(addr string, port string, privateKey string, user string, password s
 	if lPort == "" {
 		lPort = "22"
 	}
-	var authMethod ssh.AuthMethod
-	if privateKey != "" {
-		key, err := ssh.ParsePrivateKey([]byte(privateKey))
-		if err != nil {
-			return "", "", err
-		}
-		authMethod = ssh.PublicKeys(key)
-	} else if password != "" {
-		authMethod = ssh.Password(password)
-	}
-
-	// 有一些主机不允许输入用户名密码，需要键盘输入交互
-	SshInteractive := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-		answers = make([]string, len(questions))
-		// The second parameter is unused
-		for n, _ := range questions {
-			answers[n] = password
-		}
-		return answers, nil
-	}
-	// Authentication
-	config := &ssh.ClientConfig{
-		User: user,
-		// https://github.com/golang/go/issues/19767
-		// as clientConfig is non-permissive by default
-		// you can set ssh.InsercureIgnoreHostKey to allow any host
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth: []ssh.AuthMethod{
-			authMethod,
-			ssh.KeyboardInteractive(SshInteractive),
-		},
+	config, err := getSShConfig(user, password, privateKey)
+	if err != nil {
+		return "", "", err
 	}
 	// Connect
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, lPort), config)

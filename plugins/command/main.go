@@ -152,7 +152,7 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 			commane_line := strings.Join(cmdArgs[4:], " ")
 			plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
 
-			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], commane_line)
+			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], cmdArgs[2], cmdArgs[3], "", commane_line)
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -163,14 +163,14 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 	case "remote_key":
 		isRemote = true
 		// host,port,key,command
-		if len(args) < 4 {
-			errStr = "参数不足，需要4个参数"
+		if len(args) < 5 {
+			errStr = "参数不足，需要5个参数"
 			isOk = false
 		} else {
-			commane_line := strings.Join(cmdArgs[3:], " ")
+			commane_line := strings.Join(cmdArgs[4:], " ")
 			plugin.Logger.Log(hclog.Trace, "excute remote command:"+commane_line)
 
-			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", commane_line)
+			result, eStr, err := SSHRun(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", cmdArgs[3], commane_line)
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -185,7 +185,7 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], cmdArgs[3], "", cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -196,11 +196,11 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 	case "remote_copy_file_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 5 {
-			errStr = "参数不足，需要5个参数"
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			err := SSHCopyFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", cmdArgs[3], cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -215,7 +215,7 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], cmdArgs[2], cmdArgs[3], "", cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -226,11 +226,11 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 	case "remote_copy_folder_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 5 {
-			errStr = "参数不足，需要5个参数"
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			err := SSHCopyFolder(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", cmdArgs[3], cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -245,7 +245,7 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], "", cmdArgs[2], cmdArgs[3], cmdArgs[4], cmdArgs[5])
+			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], cmdArgs[3], "", cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
@@ -256,11 +256,11 @@ func (plugin *CmdPlugin) Exec(name string, args ...interface{}) (*grpc.Response,
 	case "remote_write_file_key":
 		isRemote = true
 		// host,port,key,srcPath,targetPath
-		if len(args) < 5 {
-			errStr = "参数不足，需要5个参数"
+		if len(args) < 6 {
+			errStr = "参数不足，需要6个参数"
 			isOk = false
 		} else {
-			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", "", cmdArgs[3], cmdArgs[4])
+			err := SSHWriteFile(cmdArgs[0], cmdArgs[1], cmdArgs[2], "", cmdArgs[3], cmdArgs[4], cmdArgs[5])
 			if err != nil {
 				errStr = err.Error()
 			} else {
