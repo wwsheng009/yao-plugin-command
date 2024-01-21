@@ -15,7 +15,7 @@ jobs:
     
     strategy:
       matrix:
-        go-version: [1.2.1]  # You can specify the Go version you need here
+        go-version: [1.21.6]  # You can specify the Go version you need here
         platform: [linux/amd64, linux/arm64]
 
     steps:
