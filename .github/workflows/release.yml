@@ -30,6 +30,7 @@ jobs:
     - name: Build Go project
       run: |
         GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2) GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1) go build -o command-$GOARCH-$GOOS.so
+        ls -lart
       working-directory: ./
 
     - name: Create Release
@@ -38,8 +39,7 @@ jobs:
       with:
         tag_name: command-linux-plugin
         files: |
-          command-linux-amd64.so
-          command-linux-arm64.so
+          *.so
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
