@@ -29,9 +29,10 @@ jobs:
 
     - name: Build Go project
       run: |
-        GOARCH=${{ runner.os }} GOOS=linux go build -o command-${{ github.run_number }}.so
+        export GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2)
+        export GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1)
+        go build -o command-$GOARCH-$GOOS.so
         ls -lart
-      working-directory: ./
 
     - name: Create Release
       id: create_release
