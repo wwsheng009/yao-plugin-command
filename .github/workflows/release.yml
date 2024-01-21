@@ -36,6 +36,7 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: command-linux-plugin
         files: |
           command-linux-amd64.so
           command-linux-arm64.so
