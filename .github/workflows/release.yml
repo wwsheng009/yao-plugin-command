@@ -31,7 +31,7 @@ jobs:
       run: |
         export GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2)
         export GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1)
-        go build -o command-$GOARCH-$GOOS.so
+        go build -o command-$GOOS-$GOARCH.so
         ls -lart
 
     - name: Create Release
