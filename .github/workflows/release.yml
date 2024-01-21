@@ -27,7 +27,7 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
 
-- name: Build Go project
+    - name: Build Go project
       run: |
         GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2) GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1) go build -o command-$GOARCH-$GOOS.so
       working-directory: ./
