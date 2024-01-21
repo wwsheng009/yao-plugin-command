@@ -1,0 +1,46 @@
+name: Go Build and Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Version tags"
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        go-version: [1.2.1]  # You can specify the Go version you need here
+        platform: [linux/amd64, linux/arm64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+
+- name: Build Go project
+      run: |
+        GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2) GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1) go build -o command-$GOARCH-$GOOS.so
+      working-directory: ./
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          command-linux-amd64.so
+          command-linux-arm64.so
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Get Release URL
+      run: echo "Release URL: ${{ steps.create_release.outputs.upload_url }}"
