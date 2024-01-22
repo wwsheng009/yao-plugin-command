@@ -26,7 +26,7 @@ jobs:
       run: |
         GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -o command-linux-amd64.so
         GOOS=linux CGO_ENABLED=0 GOARCH=arm64 go build -o command-linux-arm64.so
-        chmod +x psutil-*.so
+        chmod +x command-*.so
         ls -lart
 
     - name: Create Release
