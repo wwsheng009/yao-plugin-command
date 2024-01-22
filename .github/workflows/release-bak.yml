@@ -1,18 +1,23 @@
-name: Go Build and Publish Release
+name: Go Build and Publish Release Backup
 
 on:
   workflow_dispatch:
     inputs:
       tags:
         description: "Version tags"
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
+    strategy:
+      matrix:
+        go-version: [1.21.6]  # You can specify the Go version you need here
+        platform: [linux/amd64, linux/arm64]
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -20,13 +25,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: "1.21.6"
+        go-version: ${{ matrix.go-version }}
 
     - name: Build Go project
       run: |
-        GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -o command-linux-amd64.so
-        GOOS=linux CGO_ENABLED=0 GOARCH=arm64 go build -o command-linux-arm64.so
-        chmod +x psutil-*.so
+        export GOARCH=$(echo ${{ matrix.platform }} | cut -d '/' -f 2)
+        export GOOS=$(echo ${{ matrix.platform }} | cut -d '/' -f 1)
+        go build -o command-$GOOS-$GOARCH.so
         ls -lart
 
     - name: Create Release
