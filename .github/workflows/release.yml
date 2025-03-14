@@ -24,9 +24,14 @@ jobs:
 
     - name: Build Go project
       run: |
+        # Linux builds
         GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -o command-linux-amd64.so
         GOOS=linux CGO_ENABLED=0 GOARCH=arm64 go build -o command-linux-arm64.so
-        chmod +x command-*.so
+        
+        # Windows build
+        GOOS=windows CGO_ENABLED=0 GOARCH=amd64 go build -o command-windows-amd64.dll
+        
+        chmod +x command-*.*
         ls -lart
 
     - name: Create Release
@@ -36,6 +41,7 @@ jobs:
         tag_name: command-linux-plugin
         files: |
           *.so
+          *.dll
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
