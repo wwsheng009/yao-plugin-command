@@ -1,6 +1,6 @@
 module cmdt
 
-go 1.20
+go 1.23.3
 
 require (
 	github.com/hashicorp/go-hclog v1.5.0
