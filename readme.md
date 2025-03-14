@@ -5,49 +5,51 @@ excute the system script from yao plugin
 ## build
 
 ```sh
-GOARCH=amd64 GOOS=linux go build -o ../cmdt.so .
+GOARCH=amd64 GOOS=linux go build -o -o yaoapp/plugins/cmdt.so .
 
-go build -o ../cmdt.so .
+# linux
+go build -o yaoapp/plugins/cmdt.so .
+
 # windows
-go build -o ../cmdt.dll .
+go build -o yaoapp/plugins/cmdt.dll .
 ```
 ## usage
 
 call sh command with paramters
-```
-plugins.cmdt.sh para1 para2 para3 ...
+```sh
+yao run plugins.cmdt.sh para1 para2 para3 ...
 ```
 
 call bash command with paramters
 ```
-plugins.cmdt.bash para1 para2 para3 ...
+yao run plugins.cmdt.bash para1 para2 para3 ...
 ```
 
 call csh command with paramters
 ```
-plugins.cmdt.csh para1 para2 para3 ...
+yao run plugins.cmdt.csh para1 para2 para3 ...
 ```
 
 call zsh command with paramters
 ```
-plugins.cmdt.zsh para1 para2 para3 ...
+yao run plugins.cmdt.zsh para1 para2 para3 ...
 ```
 
 call fish command with paramters
 ```
-plugins.cmdt.fish para1 para2 para3 ...
+yao run plugins.cmdt.fish para1 para2 para3 ...
 ```
 
 run the script or other command
 ```
-plugins.cmdt.run command para1 para2 para3 ...
+yao run plugins.cmdt.run command para1 para2 para3 ...
 ```
 
 call the command directly
 
 Attention: the command name will convert to lowercase auto.
 ```
-plugins.cmdt.<command> para1 para2 para3 ...
+yao run plugins.cmdt.<command> para1 para2 para3 ...
 ```
 
 ## remote
@@ -58,6 +60,15 @@ yao run plugins.cmdt.remote 172.18.3.234 22 root wwsheng850524 ls
 ```
 
 ## test
+
+windows
+
+```cmd
+yao run plugins.cmdt.cmd "dir"
+
+```
+
+linux
 
 ```sh
 
