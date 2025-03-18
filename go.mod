@@ -3,7 +3,9 @@ module cmdt
 go 1.23.3
 
 require (
+	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/go-hclog v1.5.0
+	github.com/miekg/dns v1.1.55
 	github.com/pkg/sftp v1.13.6
 	github.com/yaoapp/kun v0.9.0
 	golang.org/x/crypto v0.1.0
@@ -23,8 +25,10 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/oklog/run v1.1.0 // indirect
-	golang.org/x/net v0.1.0 // indirect
-	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/tools v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20210821163610-241b8fcbd6c8 // indirect
 	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect

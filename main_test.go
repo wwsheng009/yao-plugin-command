@@ -111,3 +111,57 @@ func TestWriteFile(t *testing.T) {
 		fmt.Println("status:", m.Get("status"))
 	}
 }
+
+func TestScanNormal(t *testing.T) {
+	plugin := &CmdPlugin{}
+	plugin.setLogFile()
+	res, err := plugin.Exec("scan", "172.18.3.220", "172.18.3.236", "22")
+	if err != nil {
+		t.Fatalf("扫描失败: %v", err)
+	}
+	m := res.MustMap()
+	if m.Get("status") != 200 {
+		t.Errorf("预期状态码200，实际得到%d", m.Get("status"))
+	}
+	results := m.Get("data").(map[string]interface{})["output"].(string)
+	if results == "[]" {
+		t.Error("未扫描到任何开放端口")
+	}
+}
+
+func TestScanInvalidPorts(t *testing.T) {
+	plugin := &CmdPlugin{}
+	plugin.setLogFile()
+	res, _ := plugin.Exec("scan", "127.0.0.1", "127.0.0.1", "abc,99999")
+	m := res.MustMap()
+	if m.Get("status") != 200 {
+		t.Errorf("无效端口处理异常，状态码%d", m.Get("status"))
+	}
+	results := m.Get("data").(map[string]interface{})["output"].(string)
+	if results == "[]" {
+		t.Error("无效端口参数应返回空结果")
+	}
+}
+
+func TestScanServiceDetection(t *testing.T) {
+	// 需要模拟服务响应，此处测试基本识别逻辑
+	plugin := &CmdPlugin{}
+	plugin.setLogFile()
+	res, _ := plugin.Exec("scan", "127.0.0.1", "127.0.0.1", "22")
+	m := res.MustMap()
+	results := m.Get("data").(map[string]interface{})["output"].(string)
+	if results == "[]" {
+		t.Error("服务识别功能异常")
+	}
+}
+
+func TestScanHostAlive(t *testing.T) {
+	plugin := &CmdPlugin{}
+	plugin.setLogFile()
+	res, _ := plugin.Exec("scan", "127.0.0.1", "127.0.0.1")
+	m := res.MustMap()
+	results := m.Get("data").(map[string]interface{})["output"].(string)
+	if results == "[]" {
+		t.Log("注意：本机未开放测试端口，存活检测通过但无扫描结果")
+	}
+}

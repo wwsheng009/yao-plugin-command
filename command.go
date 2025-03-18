@@ -52,19 +52,20 @@ func NewCommandExecutor(logger hclog.Logger) *CommandExecutor {
 
 // CommandArgs 命令参数结构体
 type CommandArgs struct {
-	cmdArgs     []string
-	isRemote    bool
-	isOk        bool
-	errStr      string
-	outputStr   string
-	statusCode  int
-	statusText  string
+	cmdArgs    []string
+	isRemote   bool
+	isOk       bool
+	isDone 		bool
+	errStr     string
+	outputStr  string
+	statusCode int
+	statusText string
 }
 
 // parseArgs 解析命令参数
 func (e *CommandExecutor) parseArgs(args ...interface{}) *CommandArgs {
 	cmdArgs := make([]string, 0)
-	
+
 	for _, val := range args {
 		switch data := val.(type) {
 		case string:
@@ -82,13 +83,13 @@ func (e *CommandExecutor) parseArgs(args ...interface{}) *CommandArgs {
 	}
 
 	return &CommandArgs{
-		cmdArgs:     cmdArgs,
-		isRemote:    false,
-		isOk:        true,
-		errStr:      "",
-		outputStr:   "",
-		statusCode:  0,
-		statusText:  "",
+		cmdArgs:    cmdArgs,
+		isRemote:   false,
+		isOk:       true,
+		errStr:     "",
+		outputStr:  "",
+		statusCode: 0,
+		statusText: "",
 	}
 }
 
@@ -205,6 +206,25 @@ func (e *CommandExecutor) processCommandType(name string, args *CommandArgs) {
 				args.statusCode = 0
 			}
 		}
+	case "scan":
+		args.isDone = true;
+		if len(args.cmdArgs) < 2 {
+			args.isOk = false
+			args.errStr = "参数不足，需要2个参数"
+		} else {
+			scanExecutor := NewScanExecutor(e.Logger)
+			var interfaceArgs []interface{}
+			for _, arg := range args.cmdArgs {
+				interfaceArgs = append(interfaceArgs, arg)
+			}
+			response, err := scanExecutor.Execute(interfaceArgs...)
+			if err != nil {
+				args.errStr = err.Error()
+			} else {
+				args.outputStr = response
+			}
+		}
+
 	case "remote_copy_folder_key":
 		args.isRemote = true
 		if len(args.cmdArgs) < 6 {
@@ -321,12 +341,12 @@ func (e *CommandExecutor) ExecuteCommand(name string, args ...interface{}) (*grp
 
 	// 解析参数
 	cmdArgs := e.parseArgs(args...)
-	
+
 	// 处理命令类型
 	e.processCommandType(name, cmdArgs)
 
 	// 执行本地命令
-	if cmdArgs.isOk && !cmdArgs.isRemote {
+	if !cmdArgs.isDone && cmdArgs.isOk && !cmdArgs.isRemote {
 		e.executeLocalCommand(cmdArgs)
 	}
 
@@ -352,4 +372,4 @@ func (e *CommandExecutor) ExecuteCommand(name string, args ...interface{}) (*grp
 	}
 
 	return &grpc.Response{Bytes: bytes, Type: "map"}, nil
-} 
+}
