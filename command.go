@@ -96,7 +96,7 @@ func (e *CommandExecutor) parseArgs(args ...interface{}) *CommandArgs {
 // processCommandType 处理不同类型的命令
 func (e *CommandExecutor) processCommandType(name string, args *CommandArgs) {
 	switch name {
-	case "cmd":
+	case "cmd","powershell":
 		args.cmdArgs = append([]string{name, "/c"}, args.cmdArgs...)
 	case "bash", "sh", "csh", "ksh", "zsh", "fish":
 		args.cmdArgs = append([]string{name, "-c"}, args.cmdArgs...)
